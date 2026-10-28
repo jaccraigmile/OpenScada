@@ -11,30 +11,34 @@ client; the simulator does not replace OpenPLC or its control logic.
 Run it with Python 3:
 
 ```sh
-sudo python3 factoryio_simulator.py --host <simulator-vm-scada-ip> --port 502 --unit-id 1
+python3 factoryio_simulator.py --host 0.0.0.0 --port 1502 --unit-id 1
 ```
 
-In the Proxmox lab, run the simulator in its own Linux VM with a virtual
-network interface attached to the `scada` VXLAN VNet. Give that VM a stable
-address on the same reachable network as the OpenPLC VM. Replace
-`<simulator-vm-scada-ip>` with that address; binding to it keeps Modbus
-listening on the lab interface rather than every VM interface. The simulator
-VM does not need a Windows host, port forwarding, or a path through pfSense
-when OpenPLC and the simulator are connected to the same VNet.
+### Proxmox LXC deployment
 
-On the simulator VM, install or use Python 3, copy this repository to the VM,
-and run the command above from the repository directory. Binding the standard
-Modbus port 502 on Linux requires elevated privileges, hence `sudo`. For an
-unprivileged run, choose an unused port above 1024 (for example `1502`) and
-configure OpenPLC to use that same port.
+Run the simulator in a Proxmox LXC container (CT), rather than on a Windows
+host or in a separate full VM:
 
-In OpenPLC's generic Modbus TCP slave device, set the remote IP to the
-simulator VM's `scada` address, port to `502`, unit ID to `1`, six discrete
-inputs starting at address 0, and five coils starting at address 0. There are
-no registers. Allow TCP port 502 through the simulator VM's firewall from the
-lab devices that need access. For Wireshark or other lab analysis from an
-attacker VM, attach that VM to the same `scada` VNet and capture on its VNet
-interface.
+1. Create a Debian or Ubuntu CT and attach its virtual network interface to
+   the `scada` VXLAN VNet. Assign it a stable IP address reachable by the
+   OpenPLC machine.
+2. Install Python 3 in the CT and copy or clone this repository into it.
+3. From the repository directory in the CT, start the simulator with the
+   command above. `0.0.0.0` listens on the CT's network interfaces, and port
+   `1502` avoids requiring elevated privileges.
+4. In OpenPLC's generic Modbus TCP slave device, set the remote IP to the CT's
+   `scada` address, port to `1502`, unit ID to `1`, six discrete inputs
+   starting at address 0, and five coils starting at address 0. There are no
+   registers.
+5. Allow inbound TCP port `1502` through any Proxmox, CT, or guest firewall
+   rules that apply. Attach an authorized attacker/analysis machine to the
+   same `scada` VNet to capture lab traffic.
+
+Keep the simulator process running while OpenPLC is communicating with it.
+To use the tutorial's default Modbus port `502` instead, configure both sides
+to use that port and run the simulator with sufficient permission to bind a
+privileged port. No port forwarding is needed when the CT and OpenPLC are on
+the same reachable `scada` network.
 
 ### I/O map
 
@@ -83,12 +87,6 @@ request by itself does not bypass the operating system's TCP checks. This
 simulator uses a normal TCP socket and does not provide a packet-injection
 utility or bypass. Conduct any packet-injection exercises only in an isolated
 lab you own or are authorized to test.
-
-Run its tests with:
-
-```sh
-python3 -m unittest
-```
 
 Run its tests with:
 
