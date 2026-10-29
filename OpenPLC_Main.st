@@ -14,45 +14,40 @@ VAR
     Picker_Rotate_CW AT %QX100.4 : BOOL := FALSE;
 
     RUN : BOOL;
-    BoxNotWaiting_Fall : F_TRIG;
-    PickerHolding_Rise : R_TRIG;
-    PickerMovingZ_Fall : F_TRIG;
-    PickerRotating_Fall : F_TRIG;
+    Box_Not_Waiting_Prev : BOOL := FALSE;
+    Picker_Holding_Box_Prev : BOOL := FALSE;
+    Picker_Moving_Z_Prev : BOOL := FALSE;
+    Picker_Rotating_Prev : BOOL := FALSE;
 END_VAR
 
-BoxNotWaiting_Fall(CLK := Box_Not_Waiting);
-PickerHolding_Rise(CLK := Picker_Holding_Box);
-PickerMovingZ_Fall(CLK := Picker_Moving_Z);
-PickerRotating_Fall(CLK := Picker_Rotating);
-
-(* Rung 1: StartButton AND SafetyDoor energize RUN. *)
 RUN := StartButton AND SafetyDoor;
-
-(* Rung 2: RUN and a waiting box energize the conveyor. *)
 Conveyor_Move := RUN AND Box_Not_Waiting;
 
-(* Rung 3: falling edge of Box_Not_Waiting sets picker down and grab. *)
-IF RUN AND BoxNotWaiting_Fall.Q AND NOT Picker_Holding_Box THEN
+IF RUN AND Box_Not_Waiting_Prev AND NOT Box_Not_Waiting
+   AND NOT Picker_Holding_Box THEN
     Picker_Move_Down := TRUE;
     Picker_Grab := TRUE;
 END_IF;
 
-(* Rung 4: rising edge of Picker_Holding_Box resets picker down. *)
-IF RUN AND PickerHolding_Rise.Q THEN
+IF RUN AND NOT Picker_Holding_Box_Prev AND Picker_Holding_Box THEN
     Picker_Move_Down := FALSE;
 END_IF;
 
-(* Rung 5: falling edge of Z motion sets CCW and resets CW. *)
-IF RUN AND PickerMovingZ_Fall.Q AND Picker_Holding_Box THEN
+IF RUN AND Picker_Moving_Z_Prev AND NOT Picker_Moving_Z
+   AND Picker_Holding_Box THEN
     Picker_Rotate_CCW := TRUE;
     Picker_Rotate_CW := FALSE;
 END_IF;
 
-(* Rung 6: falling edge of rotation resets grab and CCW, and sets CW. *)
-IF RUN AND PickerRotating_Fall.Q AND Picker_Holding_Box THEN
+IF RUN AND Picker_Rotating_Prev AND NOT Picker_Rotating
+   AND Picker_Holding_Box THEN
     Picker_Grab := FALSE;
     Picker_Rotate_CW := TRUE;
     Picker_Rotate_CCW := FALSE;
 END_IF;
 
+Box_Not_Waiting_Prev := Box_Not_Waiting;
+Picker_Holding_Box_Prev := Picker_Holding_Box;
+Picker_Moving_Z_Prev := Picker_Moving_Z;
+Picker_Rotating_Prev := Picker_Rotating;
 END_PROGRAM
